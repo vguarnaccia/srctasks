@@ -66,12 +66,12 @@ def todo_finder(text, comment_styles='# // --', tokens='TODO', seps=':', ignorec
     return (_single_line_todo_finder(text, comment_styles, tokens, seps, ignorecase)
             + _multiline_todo_finder(text, comment_styles, tokens, seps, ignorecase))
 
-def colorize_todo(todo):
+def fmt_todo(todo):
     """Colorize and format a list of todos
     """
-    author = '<%s>' % todo.author
+    author = ' <%s>' % todo.author
     task = todo.task
-    return Todo(author, task)
+    return task + author
 
 
 def main(root):
@@ -88,13 +88,14 @@ def main(root):
                 dir_name + os.sep + file,
                 colorama.Style.RESET_ALL
             )
-            with open(file) as source_code:
+            with open(dir_name + os.sep + file) as source_code:
                 try:
                     text = source_code.read()
                 except UnicodeDecodeError:
                     text = '' # not unicode inside
             todos = todo_finder(text)
-            print(colorize_todo(todo) for todo in todos)
+            for todo in todos:
+                print(fmt_todo(todo))
 
 
 if __name__ == '__main__':
