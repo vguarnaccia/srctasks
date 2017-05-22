@@ -16,33 +16,62 @@ colorama.init()
 Todo = collections.namedtuple('Todo', ['author', 'task'])
 
 
-def todo_finder(filepath):
-    """Find and format TODOs in a sting
+def _single_line_todo_finder(text, comment_styles='# // --', tokens='TODO',
+                             seps=':', ignorecase=True):
+    """Find and format tokens.
 
     Note:
-        TODOs come in the form ``TODO (name): this is a comment``
+        TODOs come in the form ``TOKEN (name): this is a task``
+        A Todo has two attributes, author (name) and task (this is a task)
 
     Return:
-        Indented TODO list block
+        list of Todos.
     """
-    with open(filepath) as source_code:
-        try:
-            # TODO (Vincent): write using readlines so it can be enumerated
-            text = source_code.read()
-        except UnicodeDecodeError:
-            text = '' # not unicode inside
-
-        # Inline TODOs
-        matches = re.finditer(r'TODOS?\s*(?P<username>\(\w*\s*\w*\))?:*\s?(?P<task>.*)',
-                              text, re.IGNORECASE | re.MULTILINE)
-        todos = []
-        for match in matches:
-            author = '<%s>' % match.group('username') if match.group('username') else ''
-            task = match.group('task')
+    make_option = lambda s: '(' + '|'.join(s.split()) + ')'
+    text = text.splitlines()
+    comment_styles = make_option(comment_styles)
+    tokens = make_option(tokens)
+    seps = make_option(seps)
+    # split line with token into username and task
+    regex = (
+        r'\s*'
+        + comment_styles
+        + r'\s*'
+        + tokens
+        + r'\s*((\()(?P<username>.*)(\)))?\s?'
+        + seps
+        +  '(?P<task>.*)'
+    )
+    search = re.compile(regex, re.IGNORECASE if ignorecase else 0).search
+    todos = []
+    for line in text:
+        match = search(line)
+        if match:
+            author = match.group('username').strip() if match.group('username') else ''
+            task = match.group('task').strip()
             todo = Todo(author, task)
             todos.append(todo)
-        return todos
+    return todos
 
+
+def _multiline_todo_finder(text, comment_styles='# // --', tokens='TODO',
+                           seps=':', ignorecase=True):
+    """function not implemented. Todo finder for multiline lists.
+    """
+    todos = []
+    return todos
+
+def todo_finder(text, comment_styles='# // --', tokens='TODO', seps=':', ignorecase=True):
+    """Find todos in single line and multiline comments."""
+    return (_single_line_todo_finder(text, comment_styles, tokens, seps, ignorecase)
+            + _multiline_todo_finder(text, comment_styles, tokens, seps, ignorecase))
+
+def colorize_todo(todo):
+    """Colorize and format a list of todos
+    """
+    author = '<%s>' % todo.author
+    task = todo.task
+    return Todo(author, task)
 
 
 def main(root):
@@ -59,9 +88,13 @@ def main(root):
                 dir_name + os.sep + file,
                 colorama.Style.RESET_ALL
             )
-            todos = todo_finder(os.path.join(dir_name, file))
-            for todo in todos:
-                print(todo.task.strip(), todo.author)
+            with open(file) as source_code:
+                try:
+                    text = source_code.read()
+                except UnicodeDecodeError:
+                    text = '' # not unicode inside
+            todos = todo_finder(text)
+            print(colorize_todo(todo) for todo in todos)
 
 
 if __name__ == '__main__':
