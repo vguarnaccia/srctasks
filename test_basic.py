@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+TODO:
+    * Mock the todo_finder not in use
+"""
 
 import unittest
 
 import srctasks
 
-class test_todo_finder(unittest.TestCase):
+
+class test_todo_finder_single_line_comments(unittest.TestCase):
 
     def test_TODO_token(self):
         basic_test = """This is not a comment
@@ -17,8 +22,8 @@ class test_todo_finder(unittest.TestCase):
         self.assertEqual(todos, answer)
 
     def test_TODO_author(self):
-        basic_test = '#TODO(it\'sa Mario!):'
-        answer = [srctasks.Todo(author='it\'sa Mario!', task='')]
+        basic_test = '#TODO(it\'sa Mario!): some noise'
+        answer = [srctasks.Todo(author='it\'sa Mario!', task='some noise')]
         todos = srctasks.todo_finder(basic_test)
         self.assertEqual(todos, answer)
 
@@ -53,7 +58,6 @@ class test_todo_finder(unittest.TestCase):
         self.assertEqual(third.task, 'a third task')
         self.assertEqual(third.author, '')
 
-
     def test_many_tokens(self):
         many_tokens = """# todo ( person ): task
         # FIXME (fixer): fix
@@ -62,7 +66,8 @@ class test_todo_finder(unittest.TestCase):
         # HACK: please don't do this one
         -- NOTE (good programmer) : I can leave notes.
         """
-        todos = srctasks.todo_finder(many_tokens, tokens='todo fixme changed xxx hack note')
+        todos = srctasks.todo_finder(
+            many_tokens, tokens='todo fixme changed xxx hack note')
         first, second, third, fourth, fifth, sixth = todos
         self.assertEqual(first.task, 'task')
         self.assertEqual(first.author, 'person')
@@ -77,7 +82,6 @@ class test_todo_finder(unittest.TestCase):
         self.assertEqual(sixth.task, 'I can leave notes.')
         self.assertEqual(sixth.author, 'good programmer')
 
-
     def test_case_sensitive(self):
         tasks = """This is some code
         # Todo: don't pick me up
@@ -85,6 +89,136 @@ class test_todo_finder(unittest.TestCase):
         answer = [srctasks.Todo(author='', task='I need to be done')]
         todos = srctasks.todo_finder(tasks, ignorecase=False)
         self.assertEqual(todos, answer)
+
+
+class test_todo_finder_multiline_comments(unittest.TestCase):
+
+    def test_across_multiple_lines(self):
+        test = '''
+            TODO:
+                * implement this
+                * test it
+                * document it
+        '''
+
+        answer = [
+            srctasks.Todo(author='', task='implement this'),
+            srctasks.Todo(author='', task='test it'),
+            srctasks.Todo(author='', task='document it'),
+        ]
+        todos = srctasks.todo_finder(test)
+        self.assertEqual(todos, answer)
+
+#     def test_on_same_line(self):
+#         test = '''
+
+#         def foo(x):
+#             """A docstring
+
+#             TODO:
+#                 * implement this
+#                 * test it
+#                 * document it
+
+#             """
+
+#         '''
+
+#         answer = [
+#             srctasks.Todo(author='', task='implement this'),
+#             srctasks.Todo(author='', task='test it'),
+#             srctasks.Todo(author='', task='document it'),
+#         ]
+#         todos = srctasks.todo_finder(test)
+#         self.assertEqual(todos, answer)
+
+#     def test_on_bad_whitespace(self):
+#         test = '''
+
+#         def foo(x):
+
+#             TODO:
+#                 * implement this
+#                 * test it
+#                 * document it
+#         '''
+#         answer = [
+#             srctasks.Todo(author='', task='implement this'),
+#             srctasks.Todo(author='', task='test it'),
+#             srctasks.Todo(author='', task='document it'),
+#         ]
+#         todos = srctasks.todo_finder(test)
+#         self.assertEqual(todos, answer)
+
+#     def test_author(self):
+#         test = '''
+
+#         def foo(x):
+#             """A docstring
+
+#             TODO:
+#                 * implement this
+#                 * test it
+#                 * document it
+
+#             """
+
+#         '''
+
+#         answer = [
+#             srctasks.Todo(author='', task='implement this'),
+#             srctasks.Todo(author='', task='test it'),
+#             srctasks.Todo(author='', task='document it'),
+#         ]
+#         todos = srctasks.todo_finder(test)
+#         self.assertEqual(todos, answer)
+
+#     def test_with_many_tokens(self):
+#         test = '''
+
+#         def foo(x):
+#             """A docstring
+
+#             TODO:
+#                 * implement this
+#                 * test it
+#                 * document it
+
+#             """
+
+#         '''
+
+#         answer = [
+#             srctasks.Todo(author='', task='implement this'),
+#             srctasks.Todo(author='', task='test it'),
+#             srctasks.Todo(author='', task='document it'),
+#         ]
+#         todos = srctasks.todo_finder(test)
+#         self.assertEqual(todos, answer)
+
+#     def test_many_bullet_types(self):
+#         test = '''
+
+#         def foo(x):
+#             """A docstring
+
+#             TODO:
+#                 * implement this
+#                 * test it
+#                 * document it
+
+#             """
+
+#         '''
+
+#         answer = [
+#             srctasks.Todo(author='', task='implement this'),
+#             srctasks.Todo(author='', task='test it'),
+#             srctasks.Todo(author='', task='document it'),
+#         ]
+#         todos = srctasks.todo_finder(test)
+#         self.assertEqual(todos, answer)
+
 
 if __name__ == '__main__':
     unittest.main()

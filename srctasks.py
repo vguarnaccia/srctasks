@@ -15,9 +15,17 @@ import colorama
 colorama.init()
 Todo = collections.namedtuple('Todo', ['author', 'task'])
 
+def _make_option(options):
+    """Help make regex options from string
 
-def _single_line_todo_finder(text, comment_styles='# // --', tokens='TODO',
-                             seps=':', ignorecase=True):
+    Example:
+        >>> _make_option('# // --')
+        '(#|//|--)'
+    """
+    return '(' + '|'.join(options.split()) + ')'
+
+
+def _single_line_todo_finder(text, comment_styles, tokens, seps, ignorecase):
     """Find and format tokens.
 
     Note:
@@ -27,11 +35,6 @@ def _single_line_todo_finder(text, comment_styles='# // --', tokens='TODO',
     Return:
         list of Todos.
     """
-    make_option = lambda s: '(' + '|'.join(s.split()) + ')'
-    text = text.splitlines()
-    comment_styles = make_option(comment_styles)
-    tokens = make_option(tokens)
-    seps = make_option(seps)
     # split line with token into username and task
     regex = (
         r'\s*'
@@ -40,31 +43,67 @@ def _single_line_todo_finder(text, comment_styles='# // --', tokens='TODO',
         + tokens
         + r'\s*((\()(?P<username>.*)(\)))?\s?'
         + seps
-        +  '(?P<task>.*)'
+        + '(?P<task>.*)'
     )
-    search = re.compile(regex, re.IGNORECASE if ignorecase else 0).search
+    search = re.compile(regex, 2 * ignorecase).search
     todos = []
     for line in text:
         match = search(line)
         if match:
             author = match.group('username').strip() if match.group('username') else ''
-            task = match.group('task').strip()
-            todo = Todo(author, task)
-            todos.append(todo)
+            if match.group('task'):
+                task = match.group('task').strip()
+                todo = Todo(author, task)
+                todos.append(todo)
     return todos
 
 
-def _multiline_todo_finder(text, comment_styles='# // --', tokens='TODO',
-                           seps=':', ignorecase=True):
+def _multiline_todo_finder(text, comment_styles, tokens, seps, bullets, ignorecase):
     """function not implemented. Todo finder for multiline lists.
     """
+    # split line with token into username and task
+    header = (
+        r'\s*'
+        + tokens
+        + r'\s*((\()(?P<username>.*)(\)))?\s?'
+        + seps
+    )
+    body = (
+        r'\s*'
+        + bullets
+        + r'(?P<task>.*)'
+    )
+    find_head = re.compile(header, 2 * ignorecase).search
+    find_body = re.compile(body, 2 * ignorecase).search
     todos = []
+    is_bulleted_list = False
+    task = None
+    for line in text:
+        if not is_bulleted_list:
+            match = find_head(line)
+            if match:
+                is_bulleted_list = True
+                author = match.group('username').strip() if match.group('username') else ''
+        else:
+            while task:
+                task = find_body(line)
+                if task:
+                    todo = Todo(author, task)
+                    todos.append(todo)
     return todos
+
 
 def todo_finder(text, comment_styles='# // --', tokens='TODO', seps=':', ignorecase=True):
     """Find todos in single line and multiline comments."""
+    text = text.splitlines()
+    comment_styles = _make_option(comment_styles)
+    tokens = _make_option(tokens)
+    seps = _make_option(seps)
+    bullets = r'\* \d\.? #\. -'
+    bullets = _make_option(bullets)
     return (_single_line_todo_finder(text, comment_styles, tokens, seps, ignorecase)
-            + _multiline_todo_finder(text, comment_styles, tokens, seps, ignorecase))
+            + _multiline_todo_finder(text, comment_styles, tokens, seps, bullets, ignorecase))
+
 
 def fmt_todo(todo):
     """Colorize and format a list of todos
@@ -80,7 +119,8 @@ def main(root):
     hidden_prefix = ('.', '_')
     for dir_name, sub_dirs, files in os.walk(root):
         # Remove hidden folders and add a suffix
-        sub_dirs[:] = [sub_dir for sub_dir in sub_dirs if sub_dir[0] not in hidden_prefix]
+        sub_dirs[:] = [
+            sub_dir for sub_dir in sub_dirs if sub_dir[0] not in hidden_prefix]
         for file in files:
             print(
                 colorama.Fore.MAGENTA,
@@ -92,7 +132,7 @@ def main(root):
                 try:
                     text = source_code.read()
                 except UnicodeDecodeError:
-                    text = '' # not unicode inside
+                    text = ''  # not unicode inside
             todos = todo_finder(text)
             for todo in todos:
                 print(fmt_todo(todo))
