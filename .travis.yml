@@ -15,4 +15,4 @@ python:
 install:
     - pip install -r requirements.txt
     - pip install -r requirements_test.txt
-script: coverage run -m unittest
+script: python -m unittest
